@@ -1,0 +1,13 @@
+{
+  "name": "codex-insights",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Codex-native session ingestion foundation for an insights skill.",
+  "scripts": {
+    "discover:sessions": "node skills/codex-insights/scripts/discover-sessions.mjs",
+    "normalize:session": "node skills/codex-insights/scripts/normalize-session.mjs",
+    "normalize:sessions": "node skills/codex-insights/scripts/normalize-sessions.mjs",
+    "test": "node --test"
+  }
+}
