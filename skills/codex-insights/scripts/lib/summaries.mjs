@@ -1,9 +1,9 @@
-function incrementCount(counts, key) {
+function incrementCount(counts, key, amount = 1) {
   if (!key) {
     return
   }
 
-  counts[key] = (counts[key] ?? 0) + 1
+  counts[key] = (counts[key] ?? 0) + amount
 }
 
 function sortCounts(counts) {
@@ -71,9 +71,20 @@ function getLastValidTimestamp(events) {
   return null
 }
 
+function getUtcHour(timestamp) {
+  const value = parseTimestamp(timestamp)
+  if (value === null) {
+    return null
+  }
+
+  return new Date(value).getUTCHours()
+}
+
 export function buildSessionSummary(session) {
   const toolCounts = {}
   const systemEventCounts = {}
+  const toolErrorCategories = {}
+  const messageHours = []
   const toolFailureExamples = []
   let userMessageCount = 0
   let assistantMessageCount = 0
@@ -81,14 +92,30 @@ export function buildSessionSummary(session) {
   let toolResultCount = 0
   let toolSuccessCount = 0
   let toolFailureCount = 0
+  let userInterruptionCount = 0
   let firstUserMessage = null
   let lastAssistantMessage = null
+
+  // Track whether the most recent role-bearing event was a user message.
+  // If we see two user_messages in a row with no assistant_message in between,
+  // count the second one as an interruption signal.
+  let lastRoleEvent = null
 
   for (const event of session.events) {
     if (event.event_type === "user_message") {
       userMessageCount += 1
       if (!firstUserMessage) {
         firstUserMessage = trimSnippet(event.text)
+      }
+
+      if (lastRoleEvent === "user_message") {
+        userInterruptionCount += 1
+      }
+      lastRoleEvent = "user_message"
+
+      const hour = getUtcHour(event.timestamp)
+      if (hour !== null) {
+        messageHours.push(hour)
       }
       continue
     }
@@ -99,6 +126,7 @@ export function buildSessionSummary(session) {
       if (snippet) {
         lastAssistantMessage = snippet
       }
+      lastRoleEvent = "assistant_message"
       continue
     }
 
@@ -115,8 +143,10 @@ export function buildSessionSummary(session) {
       }
       if (event.tool_status === "failure") {
         toolFailureCount += 1
+        const toolName = event.tool_name ?? "unknown"
+        incrementCount(toolErrorCategories, toolName)
         toolFailureExamples.push({
-          tool_name: event.tool_name ?? "unknown",
+          tool_name: toolName,
           message: trimSnippet(event.text ?? "Tool execution failed."),
         })
       }
@@ -151,6 +181,9 @@ export function buildSessionSummary(session) {
     tool_success_count: toolSuccessCount,
     tool_failure_count: toolFailureCount,
     tool_counts: sortCounts(toolCounts),
+    tool_error_categories: sortCounts(toolErrorCategories),
+    user_interruption_count: userInterruptionCount,
+    message_hours: messageHours,
     warning_count: session.warnings.length,
     duration_seconds: getDurationSeconds(session.events),
     first_user_message: firstUserMessage,

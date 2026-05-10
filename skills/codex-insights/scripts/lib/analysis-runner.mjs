@@ -1,74 +1,77 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
-import { spawn } from "node:child_process"
-import { buildAnalysisPrompt } from "./analysis-prompt.mjs"
-import { getAnalysisOutputSchema, normalizeAnalysisOutput } from "./analysis-output.mjs"
+import { mkdir, readFile } from "node:fs/promises"
+import { resolve } from "node:path"
+import { createCodexClient } from "./codex-client.mjs"
+import { extractFacetsForSessions } from "./facet-extraction.mjs"
+import { generateNarrativeSections } from "./sections.mjs"
+import { resolveFacetCacheDir } from "./cache-paths.mjs"
 
-function runCommand(command, args, input) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      stdio: ["pipe", "pipe", "pipe"],
-    })
-
-    let stderr = ""
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString()
-    })
-
-    child.on("error", (error) => {
-      reject(error)
-    })
-
-    child.on("close", (code) => {
-      if (code !== 0) {
-        reject(new Error(stderr.trim() || `Command failed with exit code ${code}.`))
-        return
-      }
-
-      resolve()
-    })
-
-    child.stdin.end(input)
-  })
+function summarizeSectionResults(sections) {
+  const ok = []
+  const errors = []
+  for (const [name, result] of Object.entries(sections)) {
+    if (result.status === "ok") {
+      ok.push(name)
+    } else {
+      errors.push({ name, error: result.error })
+    }
+  }
+  return { ok, errors }
 }
 
-export async function runCodexAnalysis({ reportFacts, analysisFile = null }) {
-  if (analysisFile) {
-    const content = await readFile(analysisFile, "utf8")
-    return normalizeAnalysisOutput(JSON.parse(content))
+export async function runAnalysisFromFile(analysisFile) {
+  const raw = await readFile(analysisFile, "utf8")
+  const parsed = JSON.parse(raw)
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("analysis file must contain a JSON object")
   }
+  const sections = parsed.sections ?? {}
+  const facets = parsed.facets ?? []
+  return {
+    sections,
+    facets,
+    cache_stats: { hits: facets.length, llm_calls: 0 },
+    sources: { from_file: analysisFile },
+    summary: summarizeSectionResults(sections),
+  }
+}
 
-  const prompt = await buildAnalysisPrompt({ reportFacts })
-  const tempDir = await mkdtemp(join(tmpdir(), "codex-insights-analysis-"))
-  const schemaPath = join(tempDir, "analysis-schema.json")
-  const outputPath = join(tempDir, "analysis-output.json")
+export async function runFullAnalysis({
+  sessions,
+  reportData,
+  cacheDir,
+  client,
+  forceRefresh = false,
+  reasoningEffort,
+}) {
+  const resolvedCacheDir = cacheDir ? resolve(cacheDir) : resolveFacetCacheDir()
+  await mkdir(resolvedCacheDir, { recursive: true })
 
-  try {
-    await writeFile(schemaPath, JSON.stringify(getAnalysisOutputSchema(), null, 2), "utf8")
-    await runCommand(
-      "codex",
-      [
-        "exec",
-        "--skip-git-repo-check",
-        "--sandbox",
-        "read-only",
-        "--ask-for-approval",
-        "never",
-        "--color",
-        "never",
-        "--output-schema",
-        schemaPath,
-        "--output-last-message",
-        outputPath,
-        "-",
-      ],
-      prompt,
-    )
+  const codexClient = client ?? createCodexClient({})
 
-    const output = await readFile(outputPath, "utf8")
-    return normalizeAnalysisOutput(JSON.parse(output))
-  } finally {
-    await rm(tempDir, { recursive: true, force: true })
+  const facetResults = await extractFacetsForSessions({
+    sessions,
+    client: codexClient,
+    cacheDir: resolvedCacheDir,
+    forceRefresh,
+    reasoningEffort,
+  })
+
+  const facets = facetResults.map((result) => result.facets)
+
+  const { sections } = await generateNarrativeSections({
+    client: codexClient,
+    reportData,
+    facets,
+  })
+
+  return {
+    sections,
+    facets,
+    cache_stats: {
+      hits: facetResults.filter((r) => r.cached).length,
+      llm_calls: facetResults.filter((r) => !r.cached).length,
+    },
+    usage: codexClient.getTotalUsage?.() ?? null,
+    summary: summarizeSectionResults(sections),
   }
 }

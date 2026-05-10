@@ -11,6 +11,11 @@
     "build:session-summaries": "node skills/codex-insights/scripts/build-session-summaries.mjs",
     "build:report-facts": "node skills/codex-insights/scripts/build-report-facts.mjs",
     "build:report": "node skills/codex-insights/scripts/build-report.mjs",
+    "extract:session-facets": "node skills/codex-insights/scripts/extract-session-facets.mjs",
+    "smoke:codex-sdk": "node skills/codex-insights/scripts/smoke-codex-sdk.mjs",
     "test": "node --test"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "^0.130.0"
   }
 }
