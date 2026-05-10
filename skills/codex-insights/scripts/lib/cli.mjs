@@ -3,6 +3,8 @@ export function parseCliArgs(argv) {
     root: null,
     file: null,
     limit: null,
+    analysisFile: null,
+    outputFile: null,
     pretty: false,
   }
 
@@ -27,6 +29,18 @@ export function parseCliArgs(argv) {
       if (!Number.isNaN(parsed) && parsed > 0) {
         options.limit = parsed
       }
+      index += 1
+      continue
+    }
+
+    if (arg === "--analysis-file" && next) {
+      options.analysisFile = next
+      index += 1
+      continue
+    }
+
+    if (arg === "--output-file" && next) {
+      options.outputFile = next
       index += 1
       continue
     }
