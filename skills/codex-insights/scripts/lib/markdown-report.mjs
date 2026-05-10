@@ -1,23 +1,13 @@
 function renderCountList(counts) {
-  const entries = Object.entries(counts)
-
+  const entries = Object.entries(counts ?? {})
   if (entries.length === 0) {
     return "- None"
   }
-
   return entries.map(([name, count]) => `- \`${name}\`: ${count}`).join("\n")
 }
 
-function renderInsightsList(items) {
-  if (!items.length) {
-    return "- None"
-  }
-
-  return items.map((item) => `- ${item}`).join("\n")
-}
-
 function renderSessionSnapshots(sessions) {
-  if (!sessions.length) {
+  if (!sessions?.length) {
     return "- No sessions found."
   }
 
@@ -46,62 +36,181 @@ function renderSessionSnapshots(sessions) {
     .join("\n")
 }
 
+function getSectionData(section) {
+  return section?.status === "ok" ? section.data : null
+}
+
+function renderAtAGlance(section) {
+  const data = getSectionData(section)
+  if (!data) {
+    return ["_At-a-glance synthesis was not generated for this report._"]
+  }
+  return [
+    "**What's working**",
+    "",
+    data.whats_working,
+    "",
+    "**What's hindering you**",
+    "",
+    data.whats_hindering,
+    "",
+    "**Quick wins**",
+    "",
+    data.quick_wins,
+    "",
+    "**Ambitious workflows**",
+    "",
+    data.ambitious_workflows,
+  ]
+}
+
+function renderProjectAreas(section) {
+  const data = getSectionData(section)
+  if (!data || !Array.isArray(data.areas) || data.areas.length === 0) {
+    return ["_No project areas were identified._"]
+  }
+  const lines = []
+  for (const area of data.areas) {
+    lines.push(`- **${area.name}** (${area.session_count} session${area.session_count === 1 ? "" : "s"}) — ${area.description}`)
+  }
+  return lines
+}
+
+function renderInteractionStyle(section) {
+  const data = getSectionData(section)
+  if (!data) {
+    return ["_Interaction style narrative was not generated for this report._"]
+  }
+  return [data.narrative, "", `**Key pattern:** ${data.key_pattern}`]
+}
+
+function renderWhatWorks(section) {
+  const data = getSectionData(section)
+  if (!data) {
+    return ["_What-works narrative was not generated for this report._"]
+  }
+  const lines = [data.intro]
+  if (Array.isArray(data.impressive_workflows) && data.impressive_workflows.length > 0) {
+    lines.push("")
+    for (const workflow of data.impressive_workflows) {
+      lines.push(`- **${workflow.title}** — ${workflow.description}`)
+    }
+  }
+  return lines
+}
+
+function renderFrictionAnalysis(section) {
+  const data = getSectionData(section)
+  if (!data) {
+    return ["_Friction analysis was not generated for this report._"]
+  }
+  const lines = [data.intro]
+  if (Array.isArray(data.categories) && data.categories.length > 0) {
+    lines.push("")
+    for (const entry of data.categories) {
+      lines.push(`- **${entry.category}** — ${entry.description}`)
+      if (Array.isArray(entry.examples) && entry.examples.length > 0) {
+        for (const example of entry.examples) {
+          lines.push(`  - ${example}`)
+        }
+      }
+    }
+  }
+  return lines
+}
+
+function renderSectionErrors(sections) {
+  const errors = []
+  for (const [name, section] of Object.entries(sections ?? {})) {
+    if (section?.status === "error") {
+      errors.push(`- \`${name}\`: ${section.error}`)
+    }
+  }
+  if (errors.length === 0) {
+    return null
+  }
+  return ["## Section Generation Notes", "", ...errors]
+}
+
 export function renderMarkdownReport({ reportData, analysis }) {
   const startDate = reportData.date_range.started_at ?? "unknown"
   const endDate = reportData.date_range.ended_at ?? "unknown"
+  const sections = analysis?.sections ?? {}
 
-  return [
+  const lines = [
     "# Codex Insights Report",
     "",
     `Generated at: ${reportData.generated_at}`,
+    `Sessions analyzed: ${reportData.session_count} (${startDate} -> ${endDate})`,
     "",
-    "## Coverage Summary",
-    `- Sessions analyzed: ${reportData.session_count}`,
-    `- Session date range: ${startDate} -> ${endDate}`,
+    "## At a Glance",
     "",
-    "## Key Totals",
+    ...renderAtAGlance(sections.at_a_glance),
+    "",
+    "## Project Areas",
+    "",
+    ...renderProjectAreas(sections.project_areas),
+    "",
+    "## What Works",
+    "",
+    ...renderWhatWorks(sections.what_works),
+    "",
+    "## Friction Analysis",
+    "",
+    ...renderFrictionAnalysis(sections.friction_analysis),
+    "",
+    "## Interaction Style",
+    "",
+    ...renderInteractionStyle(sections.interaction_style),
+    "",
+    "## Stats",
+    "",
+    "### Totals",
     `- User messages: ${reportData.total_user_messages}`,
     `- Assistant messages: ${reportData.total_assistant_messages}`,
     `- Tool calls: ${reportData.total_tool_calls}`,
     `- Tool failures: ${reportData.total_tool_failures}`,
     `- Warnings: ${reportData.total_warnings}`,
+    `- User interruptions: ${reportData.total_user_interruptions ?? 0}`,
     "",
-    "## Tool Usage Overview",
+    "### Tool Usage",
     renderCountList(reportData.tool_counts),
     "",
-    "## Failures And Warnings",
-    `- Total tool failures: ${reportData.total_tool_failures}`,
-    `- Total warnings: ${reportData.total_warnings}`,
+    "### Tool Errors By Category",
+    renderCountList(reportData.tool_error_categories),
     "",
-    "## Session Distribution",
-    "### By Working Directory",
+    "### Sessions By Working Directory",
     renderCountList(reportData.cwd_counts),
     "",
-    "### By Model Provider",
+    "### Sessions By Model Provider",
     renderCountList(reportData.model_provider_counts),
     "",
-    "## Insights Summary",
-    analysis.headline,
-    "",
-    analysis.overview,
-    "",
-    "## Key Observations",
-    renderInsightsList(analysis.key_observations),
-    "",
-    "## Workflow Patterns",
-    renderInsightsList(analysis.workflow_patterns),
-    "",
-    "## Failures And Risks",
-    renderInsightsList(analysis.failures_and_risks),
-    "",
-    "## Recommended Actions",
-    renderInsightsList(analysis.recommended_actions),
-    "",
-    "## Analysis Notes",
-    renderInsightsList(analysis.analysis_notes),
-    "",
     "## Session Snapshots",
+    "",
     renderSessionSnapshots(reportData.sessions),
     "",
-  ].join("\n")
+  ]
+
+  const errorBlock = renderSectionErrors(sections)
+  if (errorBlock) {
+    lines.push(...errorBlock, "")
+  }
+
+  if (analysis?.cache_stats) {
+    lines.push(
+      "## Run Metadata",
+      "",
+      `- Facet cache hits: ${analysis.cache_stats.hits}`,
+      `- Facet LLM calls: ${analysis.cache_stats.llm_calls}`,
+    )
+    if (analysis.usage) {
+      lines.push(
+        `- Total input tokens: ${analysis.usage.input_tokens ?? 0}`,
+        `- Total output tokens: ${analysis.usage.output_tokens ?? 0}`,
+      )
+    }
+    lines.push("")
+  }
+
+  return lines.join("\n")
 }
