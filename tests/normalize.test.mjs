@@ -45,9 +45,11 @@ test("discovery plus normalization produces normalized sessions for fixture root
     sessions.push(normalizeSessionRecords(records, warnings))
   }
 
-  assert.equal(sessions.length, 2)
+  assert.equal(sessions.length, 4)
   assert.equal(sessions[0].session_id, "session-fixture-1")
   assert.equal(sessions[1].session_id, "session-fixture-2")
+  assert.equal(sessions[2].session_id, "session-fixture-3")
+  assert.equal(sessions[3].session_id, "session-fixture-4")
   assert.equal(Array.isArray(sessions[0].events), true)
-  assert.equal(Array.isArray(sessions[1].warnings), true)
+  assert.equal(Array.isArray(sessions[3].warnings), true)
 })

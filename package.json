@@ -8,6 +8,9 @@
     "discover:sessions": "node skills/codex-insights/scripts/discover-sessions.mjs",
     "normalize:session": "node skills/codex-insights/scripts/normalize-session.mjs",
     "normalize:sessions": "node skills/codex-insights/scripts/normalize-sessions.mjs",
+    "build:session-summaries": "node skills/codex-insights/scripts/build-session-summaries.mjs",
+    "build:report-facts": "node skills/codex-insights/scripts/build-report-facts.mjs",
+    "build:report": "node skills/codex-insights/scripts/build-report.mjs",
     "test": "node --test"
   }
 }
