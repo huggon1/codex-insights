@@ -12,5 +12,8 @@
     "build:report-facts": "node skills/codex-insights/scripts/build-report-facts.mjs",
     "build:report": "node skills/codex-insights/scripts/build-report.mjs",
     "test": "node --test"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "^0.130.0"
   }
 }
