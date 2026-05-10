@@ -56,16 +56,29 @@ function buildSessionSnapshots(summaries) {
     }))
 }
 
+function buildHourHistogram(messageHours) {
+  const histogram = new Array(24).fill(0)
+  for (const hour of messageHours) {
+    if (Number.isInteger(hour) && hour >= 0 && hour <= 23) {
+      histogram[hour] += 1
+    }
+  }
+  return histogram
+}
+
 export function buildAggregateReportData(summaries, { generatedAt = new Date().toISOString() } = {}) {
   const cwdCounts = {}
   const modelProviderCounts = {}
   const toolCounts = {}
+  const toolErrorCategories = {}
   const systemEventCounts = {}
+  const aggregatedMessageHours = []
   let totalUserMessages = 0
   let totalAssistantMessages = 0
   let totalToolCalls = 0
   let totalToolFailures = 0
   let totalWarnings = 0
+  let totalUserInterruptions = 0
 
   for (const summary of summaries) {
     incrementCount(cwdCounts, summary.cwd ?? "unknown")
@@ -75,13 +88,22 @@ export function buildAggregateReportData(summaries, { generatedAt = new Date().t
     totalToolCalls += summary.tool_call_count
     totalToolFailures += summary.tool_failure_count
     totalWarnings += summary.warning_count
+    totalUserInterruptions += summary.user_interruption_count ?? 0
 
     for (const [toolName, count] of Object.entries(summary.tool_counts)) {
       incrementCount(toolCounts, toolName, count)
     }
 
+    for (const [toolName, count] of Object.entries(summary.tool_error_categories ?? {})) {
+      incrementCount(toolErrorCategories, toolName, count)
+    }
+
     for (const [systemEvent, count] of Object.entries(summary.system_event_counts ?? {})) {
       incrementCount(systemEventCounts, systemEvent, count)
+    }
+
+    if (Array.isArray(summary.message_hours)) {
+      aggregatedMessageHours.push(...summary.message_hours)
     }
   }
 
@@ -96,8 +118,11 @@ export function buildAggregateReportData(summaries, { generatedAt = new Date().t
     total_tool_calls: totalToolCalls,
     total_tool_failures: totalToolFailures,
     total_warnings: totalWarnings,
+    total_user_interruptions: totalUserInterruptions,
     tool_counts: sortCounts(toolCounts),
+    tool_error_categories: sortCounts(toolErrorCategories),
     most_common_system_events: sortCounts(systemEventCounts),
+    message_hour_histogram: buildHourHistogram(aggregatedMessageHours),
     sessions: buildSessionSnapshots(summaries),
   }
 }
