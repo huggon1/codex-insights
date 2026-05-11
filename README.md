@@ -10,7 +10,10 @@ Markdown report.
 - normalize raw transcript records into a stable session event model
 - compute deterministic per-session summaries and cross-session report
   facts (tool counts, tool errors by category, user interruption
-  signal, message-hour histogram)
+  signal, token usage, message-hour histogram, overlap and
+  retry-like signals)
+- filter trivial sessions out of LLM-driven narrative analysis by
+  default while keeping them counted in deterministic stats
 - extract per-session semantic facets (goal, outcome, friction,
   primary success, brief summary) via `@openai/codex-sdk` with strict
   `outputSchema`, cached on disk by session content hash
@@ -65,6 +68,13 @@ node skills/codex-insights/scripts/smoke-codex-sdk.mjs --prompt "ping"
 - `--cache-dir <path>` to override `<repo>/.codex-insights/cache/facets`
 - `--force` to ignore the facet cache
 - `--model <name>` to override the SDK model
+- `--include-trivial` to include very short no-tool sessions in facet
+  extraction and narrative generation
+
+By default, sessions with `event_count <= 5`, no tool calls, and at
+most one user message are treated as trivial. They remain in the
+stats block, but are skipped for facet extraction and narrative
+generation so low-signal warmups do not dilute the report.
 
 `--analysis-file` injects a prebuilt `{ sections, facets }` payload
 into the renderer so you can iterate on Markdown layout without
@@ -104,9 +114,10 @@ does not require codex CLI auth or network.
 ## Current Limits
 
 - Live `codex exec --json` is the only model path; HTML output,
-  multi-clauding overlap detection, token / line-diff metrics, and
-  the `suggestions` / `on_the_horizon` / `fun_ending` narrative
-  sections are deliberately deferred.
+  line-diff metrics, and the `suggestions` / `on_the_horizon` /
+  `fun_ending` narrative sections are deliberately deferred.
+- Retry-like sessions are flagged deterministically but not deduplicated
+  or filtered yet.
 - The integration test does not assert on narrative wording; it
   asserts that all five sections produced valid JSON and that the
   facet cache invalidates correctly.

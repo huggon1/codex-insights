@@ -4,6 +4,8 @@ import { resolve } from "node:path"
 import { parseCliArgs, printJson } from "./lib/cli.mjs"
 import { loadNormalizedSessions } from "./lib/load-sessions.mjs"
 import { createCodexClient } from "./lib/codex-client.mjs"
+import { buildSessionSummaries } from "./lib/summaries.mjs"
+import { selectAnalysisSessions } from "./lib/session-quality.mjs"
 import { extractFacetsForSessions } from "./lib/facet-extraction.mjs"
 import { resolveFacetCacheDir } from "./lib/cache-paths.mjs"
 
@@ -37,6 +39,10 @@ const sessions = await loadNormalizedSessions({
   root: baseOptions.root ?? undefined,
   limit: baseOptions.limit ?? undefined,
 })
+const summaries = buildSessionSummaries(sessions)
+const analysisSelection = selectAnalysisSessions(sessions, summaries, {
+  includeTrivial: baseOptions.includeTrivial,
+})
 
 const cacheDir = resolve(extra.cacheDir ?? resolveFacetCacheDir())
 await mkdir(cacheDir, { recursive: true })
@@ -46,7 +52,7 @@ const client = createCodexClient({
 })
 
 const results = await extractFacetsForSessions({
-  sessions,
+  sessions: analysisSelection.sessions,
   client,
   cacheDir,
   forceRefresh: extra.forceRefresh,
@@ -55,11 +61,14 @@ const results = await extractFacetsForSessions({
 const summary = {
   cache_dir: cacheDir,
   session_count: sessions.length,
+  analysis_session_count: analysisSelection.analysis_session_count,
+  filtered_session_count: analysisSelection.filtered_session_count,
+  include_trivial: analysisSelection.include_trivial,
   cache_hits: results.filter((r) => r.cached).length,
   llm_calls: results.filter((r) => !r.cached).length,
   total_usage: client.getTotalUsage(),
   facets: results.map((result, index) => ({
-    session_id: sessions[index].session_id,
+    session_id: analysisSelection.sessions[index].session_id,
     cached: result.cached,
     facets: result.facets,
   })),

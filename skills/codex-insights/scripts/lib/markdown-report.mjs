@@ -6,6 +6,34 @@ function renderCountList(counts) {
   return entries.map(([name, count]) => `- \`${name}\`: ${count}`).join("\n")
 }
 
+function renderTokenUsage(reportData) {
+  if ((reportData.sessions_with_token_usage ?? 0) === 0) {
+    return ["- No token usage records found in the analyzed session files."]
+  }
+
+  return [
+    `- Sessions with token usage: ${reportData.sessions_with_token_usage}`,
+    `- Input tokens: ${reportData.total_input_tokens}`,
+    `- Cached input tokens: ${reportData.total_cached_input_tokens}`,
+    `- Output tokens: ${reportData.total_output_tokens}`,
+    `- Reasoning output tokens: ${reportData.total_reasoning_output_tokens}`,
+    `- Total tokens: ${reportData.total_tokens}`,
+  ]
+}
+
+function renderSessionQuality(reportData) {
+  const overlap = reportData.multi_session_overlap ?? {}
+  return [
+    `- Sessions used for narrative analysis: ${reportData.analysis_session_count ?? reportData.session_count}`,
+    `- Trivial sessions filtered from narrative analysis: ${reportData.filtered_session_count ?? 0}`,
+    `- Include trivial sessions: ${reportData.include_trivial ? "yes" : "no"}`,
+    `- Abandoned sessions flagged: ${reportData.abandoned_session_count ?? 0}`,
+    `- Retry-like groups flagged: ${reportData.likely_retry_group_count ?? 0}`,
+    `- Overlap events: ${overlap.overlap_events ?? 0}`,
+    `- Sessions involved in overlap: ${overlap.sessions_involved ?? 0}`,
+  ]
+}
+
 function renderSessionSnapshots(sessions) {
   if (!sessions?.length) {
     return "- No sessions found."
@@ -172,6 +200,12 @@ export function renderMarkdownReport({ reportData, analysis }) {
     `- Tool failures: ${reportData.total_tool_failures}`,
     `- Warnings: ${reportData.total_warnings}`,
     `- User interruptions: ${reportData.total_user_interruptions ?? 0}`,
+    "",
+    "### Token Usage",
+    ...renderTokenUsage(reportData),
+    "",
+    "### Session Quality Signals",
+    ...renderSessionQuality(reportData),
     "",
     "### Tool Usage",
     renderCountList(reportData.tool_counts),

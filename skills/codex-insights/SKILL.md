@@ -17,7 +17,9 @@ End-to-end local session analysis with a multi-pass narrative layer:
 - normalize raw records into a stable session schema
 - compute deterministic per-session summaries and cross-session
   aggregate facts (tool errors by category, user interruption signal,
-  message-hour histogram)
+  token usage, message-hour histogram, overlap and retry-like signals)
+- filter trivial sessions out of LLM-driven narrative analysis by
+  default while preserving them in deterministic stats
 - extract per-session semantic facets (goal, outcome, friction,
   primary success, brief summary) via `@openai/codex-sdk` with strict
   `outputSchema`, cached on disk by content hash
@@ -27,8 +29,9 @@ End-to-end local session analysis with a multi-pass narrative layer:
 - render an insights-style Markdown report
 
 It does not yet handle live `codex exec --json` runs, HTML output,
-multi-clauding overlap detection, or token/line-diff metrics. Those are
-explicitly deferred.
+line-diff metrics, true branch-aware retry deduplication, or the
+deferred `suggestions` / `on_the_horizon` / `fun_ending` narrative
+sections.
 
 ## Required Setup
 
@@ -49,12 +52,15 @@ facts) does not require any of the above.
    (`~/.codex/sessions/...` or a fixture root).
 3. The default `build-report.mjs` runs the full pipeline including
    facet extraction and section generation.
-4. Pass `--analysis-file <path>` when iterating on Markdown rendering
+4. By default, very short no-tool sessions are skipped for facet
+   extraction and narrative generation. Pass `--include-trivial` to
+   include them.
+5. Pass `--analysis-file <path>` when iterating on Markdown rendering
    without spending real LLM calls. The injected file shape is
    `{ sections: { ... }, facets: [...] }`. Treat this strictly as a
    rendering harness — verification of analysis quality always uses
    the real SDK path.
-5. Read [references/normalized-event-model.md](references/normalized-event-model.md)
+6. Read [references/normalized-event-model.md](references/normalized-event-model.md)
    when you need the current normalized schema or supported raw record
    families.
 
@@ -72,7 +78,9 @@ node skills/codex-insights/scripts/smoke-codex-sdk.mjs --prompt "ping"
 ```
 
 `build-report` accepts `--cache-dir <path>`, `--force` (ignore facet
-cache), and `--model <name>` to override the SDK model.
+cache), `--model <name>` to override the SDK model, and
+`--include-trivial` to include sessions that would otherwise be skipped
+from narrative analysis.
 
 ## Caching
 

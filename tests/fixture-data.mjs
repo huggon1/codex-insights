@@ -9,6 +9,7 @@ const FIXTURE_ONE = `{"timestamp":"2026-05-10T02:13:28.005Z","type":"session_met
 {"timestamp":"2026-05-10T02:13:31.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\\"cmd\\":\\"rg --files\\"}","call_id":"call-1"}}
 {"timestamp":"2026-05-10T02:13:31.500Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call-1","output":"Chunk ID: abc\\nWall time: 0.01 seconds\\nProcess exited with code 0\\nOutput:\\nREADME.md\\nsrc/index.js\\n"}}
 {"timestamp":"2026-05-10T02:13:32.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Repository scan complete.","phase":"commentary","memory_citation":null}}
+{"timestamp":"2026-05-10T02:13:32.500Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"cached_input_tokens":40,"output_tokens":20,"reasoning_output_tokens":5,"total_tokens":120},"last_token_usage":{"input_tokens":100,"cached_input_tokens":40,"output_tokens":20,"reasoning_output_tokens":5,"total_tokens":120},"model_context_window":258400}}}
 {"timestamp":"2026-05-10T02:13:33.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"The main risks are missing tests and unclear ownership."}],"phase":"final_answer"}}
 `
 

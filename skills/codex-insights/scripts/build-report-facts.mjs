@@ -11,6 +11,8 @@ const sessions = await loadNormalizedSessions({
 })
 
 const summaries = buildSessionSummaries(sessions)
-const reportData = buildAggregateReportData(summaries)
+const reportData = buildAggregateReportData(summaries, {
+  includeTrivial: options.includeTrivial,
+})
 
 printJson(buildReportFacts(reportData), options.pretty)

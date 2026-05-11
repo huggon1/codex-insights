@@ -80,6 +80,21 @@ function getUtcHour(timestamp) {
   return new Date(value).getUTCHours()
 }
 
+function addTokenUsage(base, addition) {
+  if (!addition) {
+    return base
+  }
+
+  return {
+    input_tokens: (base?.input_tokens ?? 0) + (addition.input_tokens ?? 0),
+    cached_input_tokens: (base?.cached_input_tokens ?? 0) + (addition.cached_input_tokens ?? 0),
+    output_tokens: (base?.output_tokens ?? 0) + (addition.output_tokens ?? 0),
+    reasoning_output_tokens:
+      (base?.reasoning_output_tokens ?? 0) + (addition.reasoning_output_tokens ?? 0),
+    total_tokens: (base?.total_tokens ?? 0) + (addition.total_tokens ?? 0),
+  }
+}
+
 export function buildSessionSummary(session) {
   const toolCounts = {}
   const systemEventCounts = {}
@@ -95,6 +110,7 @@ export function buildSessionSummary(session) {
   let userInterruptionCount = 0
   let firstUserMessage = null
   let lastAssistantMessage = null
+  let tokenUsage = null
 
   // Track whether the most recent role-bearing event was a user message.
   // If we see two user_messages in a row with no assistant_message in between,
@@ -155,6 +171,9 @@ export function buildSessionSummary(session) {
 
     if (event.event_type === "system_event") {
       incrementCount(systemEventCounts, event.text ?? "unknown")
+      if (event.text === "token_count" && event.token_usage) {
+        tokenUsage = addTokenUsage(null, event.token_usage)
+      }
     }
   }
 
@@ -184,6 +203,7 @@ export function buildSessionSummary(session) {
     tool_error_categories: sortCounts(toolErrorCategories),
     user_interruption_count: userInterruptionCount,
     message_hours: messageHours,
+    token_usage: tokenUsage,
     warning_count: session.warnings.length,
     duration_seconds: getDurationSeconds(session.events),
     first_user_message: firstUserMessage,

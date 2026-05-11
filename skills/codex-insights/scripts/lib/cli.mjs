@@ -6,6 +6,7 @@ export function parseCliArgs(argv) {
     analysisFile: null,
     outputFile: null,
     pretty: false,
+    includeTrivial: false,
   }
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -47,6 +48,11 @@ export function parseCliArgs(argv) {
 
     if (arg === "--pretty") {
       options.pretty = true
+      continue
+    }
+
+    if (arg === "--include-trivial") {
+      options.includeTrivial = true
     }
   }
 

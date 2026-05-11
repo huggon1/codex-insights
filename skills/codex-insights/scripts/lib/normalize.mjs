@@ -63,6 +63,32 @@ function buildTextFromOutput(output) {
   return compactText(output.slice(0, 500))
 }
 
+function normalizeUsage(rawUsage) {
+  if (!rawUsage || typeof rawUsage !== "object" || Array.isArray(rawUsage)) {
+    return null
+  }
+
+  const keys = [
+    "input_tokens",
+    "cached_input_tokens",
+    "output_tokens",
+    "reasoning_output_tokens",
+    "total_tokens",
+  ]
+  const usage = {}
+  let hasValue = false
+
+  for (const key of keys) {
+    const value = rawUsage[key]
+    if (Number.isFinite(value) && value >= 0) {
+      usage[key] = value
+      hasValue = true
+    }
+  }
+
+  return hasValue ? usage : null
+}
+
 function createBaseEvent(sessionState, record, overrides = {}) {
   return {
     session_id: sessionState.sessionId,
@@ -74,6 +100,7 @@ function createBaseEvent(sessionState, record, overrides = {}) {
     tool_status: null,
     cwd: sessionState.cwd,
     model_provider: sessionState.modelProvider,
+    token_usage: null,
     command_text: null,
     file_paths: [],
     raw_ref: createRawRef(record),
@@ -104,6 +131,12 @@ function normalizeEventMessage(record, sessionState, warnings) {
         event_type: "assistant_message",
         role: "assistant",
         text: compactText(payload.message),
+      })
+    case "token_count":
+      return createBaseEvent(sessionState, record, {
+        event_type: "system_event",
+        text: "token_count",
+        token_usage: normalizeUsage(payload.info?.total_token_usage),
       })
     default:
       return createBaseEvent(sessionState, record, {
