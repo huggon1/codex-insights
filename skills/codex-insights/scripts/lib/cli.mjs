@@ -5,8 +5,10 @@ export function parseCliArgs(argv) {
     limit: null,
     analysisFile: null,
     outputFile: null,
+    format: "markdown",
     pretty: false,
     includeTrivial: false,
+    quiet: false,
   }
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -46,8 +48,21 @@ export function parseCliArgs(argv) {
       continue
     }
 
+    if (arg === "--format" && next) {
+      if (next === "markdown" || next === "html") {
+        options.format = next
+      }
+      index += 1
+      continue
+    }
+
     if (arg === "--pretty") {
       options.pretty = true
+      continue
+    }
+
+    if (arg === "--quiet") {
+      options.quiet = true
       continue
     }
 

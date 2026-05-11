@@ -147,6 +147,65 @@ function renderFrictionAnalysis(section) {
   return lines
 }
 
+function renderSuggestions(section) {
+  const data = getSectionData(section)
+  if (!data) {
+    return ["_Suggestions were not generated for this report._"]
+  }
+
+  const lines = []
+  if (Array.isArray(data.agents_md_additions) && data.agents_md_additions.length > 0) {
+    lines.push("**AGENTS.md additions**", "")
+    for (const item of data.agents_md_additions) {
+      lines.push(`- **${item.title}** — ${item.instruction} Evidence: ${item.evidence}`)
+    }
+    lines.push("")
+  }
+
+  if (Array.isArray(data.features_to_try) && data.features_to_try.length > 0) {
+    lines.push("**Features or workflows to try**", "")
+    for (const item of data.features_to_try) {
+      lines.push(`- **${item.title}** — ${item.why} Try: ${item.how_to_try}`)
+    }
+    lines.push("")
+  }
+
+  if (Array.isArray(data.usage_patterns) && data.usage_patterns.length > 0) {
+    lines.push("**Usage patterns**", "")
+    for (const item of data.usage_patterns) {
+      lines.push(`- **${item.pattern}** — ${item.recommendation}`)
+    }
+  }
+
+  return lines.length > 0 ? lines : ["_No specific suggestions were identified._"]
+}
+
+function renderOnTheHorizon(section) {
+  const data = getSectionData(section)
+  if (!data) {
+    return ["_On-the-horizon opportunities were not generated for this report._"]
+  }
+
+  const lines = [data.intro]
+  if (Array.isArray(data.opportunities) && data.opportunities.length > 0) {
+    lines.push("")
+    for (const item of data.opportunities) {
+      lines.push(`- **${item.title}** — ${item.whats_possible}`)
+      lines.push(`  Try: ${item.how_to_try}`)
+      lines.push(`  Prompt: \`${item.copyable_prompt}\``)
+    }
+  }
+  return lines
+}
+
+function renderFunEnding(section) {
+  const data = getSectionData(section)
+  if (!data) {
+    return ["_Fun ending was not generated for this report._"]
+  }
+  return [`**${data.headline}**`, "", data.detail]
+}
+
 function renderSectionErrors(sections) {
   const errors = []
   for (const [name, section] of Object.entries(sections ?? {})) {
@@ -190,6 +249,18 @@ export function renderMarkdownReport({ reportData, analysis }) {
     "## Interaction Style",
     "",
     ...renderInteractionStyle(sections.interaction_style),
+    "",
+    "## Suggestions",
+    "",
+    ...renderSuggestions(sections.suggestions),
+    "",
+    "## On The Horizon",
+    "",
+    ...renderOnTheHorizon(sections.on_the_horizon),
+    "",
+    "## Fun Ending",
+    "",
+    ...renderFunEnding(sections.fun_ending),
     "",
     "## Stats",
     "",

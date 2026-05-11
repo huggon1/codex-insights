@@ -66,8 +66,9 @@ test("buildNarrativeContext rolls up facet aggregations", () => {
   assert.equal(context.facet_brief_summaries.length, 2)
 })
 
-test("generateNarrativeSections runs 4 parallel sections plus at_a_glance", async () => {
+test("generateNarrativeSections runs parallel sections plus at_a_glance", async () => {
   const calls = []
+  const progressMessages = []
   const fakeClient = {
     async runStructured(prompt, schema) {
       const sectionName =
@@ -90,6 +91,13 @@ test("generateNarrativeSections runs 4 parallel sections plus at_a_glance", asyn
         interaction_style: { narrative: "n", key_pattern: "k" },
         friction_analysis: { intro: "i", categories: [] },
         what_works: { intro: "i", impressive_workflows: [] },
+        suggestions: {
+          agents_md_additions: [],
+          features_to_try: [],
+          usage_patterns: [],
+        },
+        on_the_horizon: { intro: "i", opportunities: [] },
+        fun_ending: { headline: "h", detail: "d" },
         at_a_glance: {
           whats_working: "ww",
           whats_hindering: "wh",
@@ -109,9 +117,14 @@ test("generateNarrativeSections runs 4 parallel sections plus at_a_glance", asyn
     client: fakeClient,
     reportData: buildReportData(),
     facets: buildFacets(),
+    progress: {
+      log(message) {
+        progressMessages.push(message)
+      },
+    },
   })
 
-  assert.equal(Object.keys(sections).length, 5)
+  assert.equal(Object.keys(sections).length, SECTION_NAMES.length + 1)
   for (const name of SECTION_NAMES) {
     assert.equal(sections[name].status, "ok", `${name} should succeed`)
   }
@@ -119,9 +132,18 @@ test("generateNarrativeSections runs 4 parallel sections plus at_a_glance", asyn
   assert.equal(sections.at_a_glance.data.whats_working, "ww")
   assert.equal(context.session_count, 3)
 
-  // The 4 parallel sections should have been called before at_a_glance.
+  // The parallel sections should have been called before at_a_glance.
   const lastCall = calls.at(-1)
   assert.equal(lastCall, "at_a_glance")
+  assert.equal(progressMessages[0], "generating 7 narrative sections")
+  for (const name of SECTION_NAMES) {
+    assert.ok(
+      progressMessages.some((message) => message.includes(`${name} done`)),
+      `progress should include ${name}`,
+    )
+  }
+  assert.ok(progressMessages.includes("synthesizing at_a_glance"))
+  assert.ok(progressMessages.includes("synthesizing at_a_glance done"))
 })
 
 test("generateNarrativeSections records section-level errors without aborting", async () => {
@@ -134,6 +156,13 @@ test("generateNarrativeSections records section-level errors without aborting", 
         [SECTION_SCHEMAS.project_areas, { areas: [] }],
         [SECTION_SCHEMAS.interaction_style, { narrative: "n", key_pattern: "k" }],
         [SECTION_SCHEMAS.what_works, { intro: "i", impressive_workflows: [] }],
+        [SECTION_SCHEMAS.suggestions, {
+          agents_md_additions: [],
+          features_to_try: [],
+          usage_patterns: [],
+        }],
+        [SECTION_SCHEMAS.on_the_horizon, { intro: "i", opportunities: [] }],
+        [SECTION_SCHEMAS.fun_ending, { headline: "h", detail: "d" }],
         [SECTION_SCHEMAS.at_a_glance, {
           whats_working: "ww", whats_hindering: "wh", quick_wins: "qw", ambitious_workflows: "aw",
         }],

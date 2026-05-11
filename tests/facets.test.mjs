@@ -10,7 +10,10 @@ import {
   getFacetOutputSchema,
   validateFacets,
 } from "../skills/codex-insights/scripts/lib/facets.mjs"
-import { extractFacetsForSession } from "../skills/codex-insights/scripts/lib/facet-extraction.mjs"
+import {
+  extractFacetsForSession,
+  extractFacetsForSessions,
+} from "../skills/codex-insights/scripts/lib/facet-extraction.mjs"
 import { formatTranscriptForFacets } from "../skills/codex-insights/scripts/lib/transcript-format.mjs"
 
 function buildValidFacets(overrides = {}) {
@@ -182,4 +185,64 @@ test("extractFacetsForSession throws on cache miss without a client", async () =
     }),
     /no codex client/,
   )
+})
+
+test("extractFacetsForSessions reports progress with cache status", async () => {
+  const cacheDir = await mkdtemp(join(tmpdir(), "facet-cache-progress-"))
+  let llmCalls = 0
+  const fakeClient = {
+    async runStructured() {
+      llmCalls += 1
+      return { data: buildValidFacets(), usage: null }
+    },
+    getTotalUsage: () => ({}),
+  }
+
+  const firstSession = {
+    session_id: "s-progress-cached",
+    cwd: "/tmp",
+    model_provider: "openai",
+    warnings: [],
+    events: [
+      { event_type: "user_message", text: "cached", timestamp: "2026-05-10T00:00:00.000Z" },
+    ],
+  }
+  const secondSession = {
+    session_id: "s-progress-miss",
+    cwd: "/tmp",
+    model_provider: "openai",
+    warnings: [],
+    events: [
+      { event_type: "user_message", text: "miss", timestamp: "2026-05-10T00:00:00.000Z" },
+    ],
+  }
+
+  await extractFacetsForSession({ session: firstSession, client: fakeClient, cacheDir })
+
+  const messages = []
+  const progress = {
+    log(message) {
+      messages.push(message)
+    },
+    done(label) {
+      messages.push(`${label} done`)
+    },
+  }
+
+  const results = await extractFacetsForSessions({
+    sessions: [firstSession, secondSession],
+    client: fakeClient,
+    cacheDir,
+    concurrency: 1,
+    progress,
+  })
+
+  assert.equal(results[0].cached, true)
+  assert.equal(results[1].cached, false)
+  assert.deepEqual(messages, [
+    "extracting facets for 2 sessions",
+    "extracting facets 1/2 session=s-progress-cached cache=hit",
+    "extracting facets 2/2 session=s-progress-miss cache=miss",
+    "extracting facets done",
+  ])
 })

@@ -42,6 +42,7 @@ export async function runFullAnalysis({
   client,
   forceRefresh = false,
   reasoningEffort,
+  progress,
 }) {
   const resolvedCacheDir = cacheDir ? resolve(cacheDir) : resolveFacetCacheDir()
   await mkdir(resolvedCacheDir, { recursive: true })
@@ -54,6 +55,7 @@ export async function runFullAnalysis({
     cacheDir: resolvedCacheDir,
     forceRefresh,
     reasoningEffort,
+    progress,
   })
 
   const facets = facetResults.map((result) => result.facets)
@@ -62,6 +64,7 @@ export async function runFullAnalysis({
     client: codexClient,
     reportData,
     facets,
+    progress,
   })
 
   return {

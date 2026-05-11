@@ -1,6 +1,6 @@
 ---
 name: codex-insights
-description: Analyze local Codex session files end to end — discover JSONL transcripts, normalize raw records, extract per-session semantic facets via the codex SDK, generate a multi-section insights report, and render Markdown shaped after Claude Code /insights.
+description: Analyze local Codex session files end to end — discover JSONL transcripts, normalize raw records, extract per-session semantic facets via the codex SDK, generate a multi-section insights report, and render Markdown or HTML shaped after Claude Code /insights.
 ---
 
 # Codex Insights
@@ -23,15 +23,15 @@ End-to-end local session analysis with a multi-pass narrative layer:
 - extract per-session semantic facets (goal, outcome, friction,
   primary success, brief summary) via `@openai/codex-sdk` with strict
   `outputSchema`, cached on disk by content hash
-- generate four narrative sections in parallel (project_areas,
-  interaction_style, what_works, friction_analysis), then synthesize an
-  at-a-glance summary on top of them
-- render an insights-style Markdown report
+- generate seven narrative sections in parallel (project_areas,
+  interaction_style, what_works, friction_analysis, suggestions,
+  on_the_horizon, fun_ending), then synthesize an at-a-glance summary
+  on top of them
+- render insights-style Markdown or self-contained HTML reports
 
-It does not yet handle live `codex exec --json` runs, HTML output,
-line-diff metrics, true branch-aware retry deduplication, or the
-deferred `suggestions` / `on_the_horizon` / `fun_ending` narrative
-sections.
+It does not yet handle live `codex exec --json` runs, line-diff
+metrics, subjective satisfaction/helpfulness facets, or true
+branch-aware retry deduplication.
 
 ## Required Setup
 
@@ -55,11 +55,11 @@ facts) does not require any of the above.
 4. By default, very short no-tool sessions are skipped for facet
    extraction and narrative generation. Pass `--include-trivial` to
    include them.
-5. Pass `--analysis-file <path>` when iterating on Markdown rendering
-   without spending real LLM calls. The injected file shape is
-   `{ sections: { ... }, facets: [...] }`. Treat this strictly as a
-   rendering harness — verification of analysis quality always uses
-   the real SDK path.
+5. Pass `--analysis-file <path>` when iterating on Markdown or HTML
+   rendering without spending real LLM calls. The injected file shape
+   is `{ sections: { ... }, facets: [...] }`. Treat this strictly as a
+   rendering harness — verification of analysis quality always uses the
+   real SDK path.
 6. Read [references/normalized-event-model.md](references/normalized-event-model.md)
    when you need the current normalized schema or supported raw record
    families.
@@ -73,14 +73,19 @@ node skills/codex-insights/scripts/build-session-summaries.mjs --root <root> --p
 node skills/codex-insights/scripts/build-report-facts.mjs --root <root> --pretty
 node skills/codex-insights/scripts/extract-session-facets.mjs --root <root> --pretty
 node skills/codex-insights/scripts/build-report.mjs --root <root> --output-file ./report.md
+node skills/codex-insights/scripts/build-report.mjs --root <root> --format html --output-file ./report.html
 node skills/codex-insights/scripts/build-report.mjs --root <root> --analysis-file ./fixtures/analysis.json
 node skills/codex-insights/scripts/smoke-codex-sdk.mjs --prompt "ping"
 ```
 
 `build-report` accepts `--cache-dir <path>`, `--force` (ignore facet
 cache), `--model <name>` to override the SDK model, and
+`--format markdown|html` to select the renderer. It also accepts
 `--include-trivial` to include sessions that would otherwise be skipped
 from narrative analysis.
+
+Long-running analysis commands print progress to stderr by default.
+Pass `--quiet` when a script needs no progress output.
 
 ## Caching
 

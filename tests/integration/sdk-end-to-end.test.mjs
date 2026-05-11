@@ -44,6 +44,9 @@ test("real SDK end-to-end report generation", { skip: !E2E_ENABLED }, async () =
     "## What Works",
     "## Friction Analysis",
     "## Interaction Style",
+    "## Suggestions",
+    "## On The Horizon",
+    "## Fun Ending",
     "## Stats",
   ]) {
     assert.match(report, new RegExp(`^${heading}$`, "m"), `report missing ${heading}`)

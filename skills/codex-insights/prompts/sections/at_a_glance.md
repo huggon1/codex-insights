@@ -1,8 +1,9 @@
 You are writing the "At a Glance" summary that opens a Codex Insights
 report. You receive both the aggregated session context and the four
-narrative sections that have already been generated (project_areas,
-interaction_style, what_works, friction_analysis). Synthesize them
-into a 4-part executive summary.
+narrative sections that have already been generated. These may include
+project_areas, interaction_style, what_works, friction_analysis,
+suggestions, on_the_horizon, and fun_ending. Synthesize the completed
+sections into a 4-part executive summary.
 
 Respond with **only** a JSON object matching:
 
