@@ -70,10 +70,68 @@ function buildFakeAnalysis() {
           key_pattern: "One-shot inspection followed by a one-paragraph conclusion.",
         },
       },
+      suggestions: {
+        status: "ok",
+        data: {
+          agents_md_additions: [
+            {
+              title: "Test-first loops",
+              instruction: "Ask Codex to run the relevant test after code edits.",
+              evidence: "Fixture sessions include repeated test triage and tool failures.",
+            },
+          ],
+          features_to_try: [
+            {
+              title: "Report harness",
+              why: "The user iterates on Markdown output with fixture data.",
+              how_to_try: "Use --analysis-file before spending SDK calls.",
+            },
+          ],
+          usage_patterns: [
+            {
+              pattern: "Inspection before synthesis",
+              recommendation: "Keep asking for repository scans before implementation.",
+            },
+          ],
+        },
+      },
+      on_the_horizon: {
+        status: "ok",
+        data: {
+          intro: "The next opportunity is to turn repeated inspection loops into reusable workflows.",
+          opportunities: [
+            {
+              title: "Reusable report review",
+              whats_possible: "Codex can compare two generated reports and identify quality regressions.",
+              how_to_try: "Generate baseline and candidate reports from the same fixtures.",
+              copyable_prompt: "Compare these two reports and identify regressions in specificity.",
+            },
+          ],
+        },
+      },
+      fun_ending: {
+        status: "ok",
+        data: {
+          headline: "The logs are learning to talk",
+          detail: "Most sessions start with inspection and end with concise synthesis. That is a good shape for an insights workflow.",
+        },
+      },
     },
     facets: [],
     cache_stats: { hits: 0, llm_calls: 0 },
-    summary: { ok: ["project_areas", "what_works", "friction_analysis", "interaction_style", "at_a_glance"], errors: [] },
+    summary: {
+      ok: [
+        "project_areas",
+        "what_works",
+        "friction_analysis",
+        "interaction_style",
+        "suggestions",
+        "on_the_horizon",
+        "fun_ending",
+        "at_a_glance",
+      ],
+      errors: [],
+    },
   }
 }
 
@@ -141,6 +199,9 @@ test("renderMarkdownReport emits all narrative sections and stats", async () => 
   assert.match(markdown, /^## What Works$/m)
   assert.match(markdown, /^## Friction Analysis$/m)
   assert.match(markdown, /^## Interaction Style$/m)
+  assert.match(markdown, /^## Suggestions$/m)
+  assert.match(markdown, /^## On The Horizon$/m)
+  assert.match(markdown, /^## Fun Ending$/m)
   assert.match(markdown, /^## Stats$/m)
   assert.match(markdown, /^### Token Usage$/m)
   assert.match(markdown, /^### Session Quality Signals$/m)
@@ -161,6 +222,9 @@ test("renderMarkdownReport surfaces section-level errors in a notes block", () =
         what_works: { status: "ok", data: { intro: "ok", impressive_workflows: [] } },
         friction_analysis: { status: "ok", data: { intro: "ok", categories: [] } },
         interaction_style: { status: "ok", data: { narrative: "n", key_pattern: "k" } },
+        suggestions: { status: "error", error: "schema mismatch" },
+        on_the_horizon: { status: "ok", data: { intro: "ok", opportunities: [] } },
+        fun_ending: { status: "ok", data: { headline: "h", detail: "d" } },
       },
       cache_stats: { hits: 1, llm_calls: 4 },
     },
@@ -169,6 +233,7 @@ test("renderMarkdownReport surfaces section-level errors in a notes block", () =
   assert.match(markdown, /## Section Generation Notes/)
   assert.match(markdown, /at_a_glance.*model returned non-JSON/s)
   assert.match(markdown, /project_areas.*schema mismatch/s)
+  assert.match(markdown, /suggestions.*schema mismatch/s)
   assert.match(markdown, /Facet cache hits: 1/)
 })
 
@@ -197,6 +262,7 @@ test("build-report script renders markdown end to end with an analysis file", as
   assert.equal(stdout, "")
   const report = await readFile(outputFile, "utf8")
   assert.match(report, /^## At a Glance$/m)
+  assert.match(report, /^## Suggestions$/m)
   assert.match(report, /Repository inspection/)
   assert.match(report, /Trivial sessions filtered from narrative analysis: 1/)
   assert.match(report, /session-fixture-4/)

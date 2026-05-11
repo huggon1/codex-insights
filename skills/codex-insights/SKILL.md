@@ -23,15 +23,15 @@ End-to-end local session analysis with a multi-pass narrative layer:
 - extract per-session semantic facets (goal, outcome, friction,
   primary success, brief summary) via `@openai/codex-sdk` with strict
   `outputSchema`, cached on disk by content hash
-- generate four narrative sections in parallel (project_areas,
-  interaction_style, what_works, friction_analysis), then synthesize an
-  at-a-glance summary on top of them
+- generate seven narrative sections in parallel (project_areas,
+  interaction_style, what_works, friction_analysis, suggestions,
+  on_the_horizon, fun_ending), then synthesize an at-a-glance summary
+  on top of them
 - render an insights-style Markdown report
 
 It does not yet handle live `codex exec --json` runs, HTML output,
-line-diff metrics, true branch-aware retry deduplication, or the
-deferred `suggestions` / `on_the_horizon` / `fun_ending` narrative
-sections.
+line-diff metrics, subjective satisfaction/helpfulness facets, or true
+branch-aware retry deduplication.
 
 ## Required Setup
 

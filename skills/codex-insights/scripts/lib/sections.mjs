@@ -6,6 +6,9 @@ export const SECTION_NAMES = [
   "interaction_style",
   "friction_analysis",
   "what_works",
+  "suggestions",
+  "on_the_horizon",
+  "fun_ending",
 ]
 
 export const SECTION_SCHEMAS = {
@@ -77,6 +80,82 @@ export const SECTION_SCHEMAS = {
           },
         },
       },
+    },
+  },
+  suggestions: {
+    type: "object",
+    additionalProperties: false,
+    required: ["agents_md_additions", "features_to_try", "usage_patterns"],
+    properties: {
+      agents_md_additions: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "instruction", "evidence"],
+          properties: {
+            title: { type: "string" },
+            instruction: { type: "string" },
+            evidence: { type: "string" },
+          },
+        },
+      },
+      features_to_try: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "why", "how_to_try"],
+          properties: {
+            title: { type: "string" },
+            why: { type: "string" },
+            how_to_try: { type: "string" },
+          },
+        },
+      },
+      usage_patterns: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["pattern", "recommendation"],
+          properties: {
+            pattern: { type: "string" },
+            recommendation: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  on_the_horizon: {
+    type: "object",
+    additionalProperties: false,
+    required: ["intro", "opportunities"],
+    properties: {
+      intro: { type: "string" },
+      opportunities: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "whats_possible", "how_to_try", "copyable_prompt"],
+          properties: {
+            title: { type: "string" },
+            whats_possible: { type: "string" },
+            how_to_try: { type: "string" },
+            copyable_prompt: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  fun_ending: {
+    type: "object",
+    additionalProperties: false,
+    required: ["headline", "detail"],
+    properties: {
+      headline: { type: "string" },
+      detail: { type: "string" },
     },
   },
   at_a_glance: {

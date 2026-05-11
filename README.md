@@ -17,10 +17,11 @@ Markdown report.
 - extract per-session semantic facets (goal, outcome, friction,
   primary success, brief summary) via `@openai/codex-sdk` with strict
   `outputSchema`, cached on disk by session content hash
-- generate four narrative sections in parallel (project_areas,
-  interaction_style, what_works, friction_analysis) and synthesize an
-  at-a-glance executive summary
-- render a Markdown report with all five sections plus stats, session
+- generate seven narrative sections in parallel (project_areas,
+  interaction_style, what_works, friction_analysis, suggestions,
+  on_the_horizon, fun_ending) and synthesize an at-a-glance executive
+  summary
+- render a Markdown report with all eight sections plus stats, session
   snapshots, and run metadata
 
 ## Architecture
@@ -31,7 +32,7 @@ Two layers, separated on purpose:
    `aggregate` → `report-facts`. Pure functions on local files, no
    network.
 2. **LLM-driven, multi-pass** — facet extraction per session
-   (cached) → 4 parallel narrative sections → at-a-glance synthesis.
+   (cached) → 7 parallel narrative sections → at-a-glance synthesis.
    All calls go through `lib/codex-client.mjs`, which wraps
    `@openai/codex-sdk` with `outputSchema`, read-only sandbox, and
    `approvalPolicy: never`.
@@ -114,10 +115,10 @@ does not require codex CLI auth or network.
 ## Current Limits
 
 - Live `codex exec --json` is the only model path; HTML output,
-  line-diff metrics, and the `suggestions` / `on_the_horizon` /
-  `fun_ending` narrative sections are deliberately deferred.
+  line-diff metrics, subjective satisfaction/helpfulness facets, and
+  true branch-aware retry deduplication are deliberately deferred.
 - Retry-like sessions are flagged deterministically but not deduplicated
   or filtered yet.
 - The integration test does not assert on narrative wording; it
-  asserts that all five sections produced valid JSON and that the
+  asserts that all eight sections produced valid JSON and that the
   facet cache invalidates correctly.
