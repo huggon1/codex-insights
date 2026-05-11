@@ -4,6 +4,7 @@ import { parseCliArgs } from "./lib/cli.mjs"
 import { loadNormalizedSessions } from "./lib/load-sessions.mjs"
 import { buildSessionSummaries } from "./lib/summaries.mjs"
 import { buildAggregateReportData } from "./lib/aggregate.mjs"
+import { selectAnalysisSessions } from "./lib/session-quality.mjs"
 import { runAnalysisFromFile, runFullAnalysis } from "./lib/analysis-runner.mjs"
 import { renderMarkdownReport } from "./lib/markdown-report.mjs"
 import { resolveFacetCacheDir } from "./lib/cache-paths.mjs"
@@ -40,7 +41,12 @@ const sessions = await loadNormalizedSessions({
 })
 
 const summaries = buildSessionSummaries(sessions)
-const reportData = buildAggregateReportData(summaries)
+const reportData = buildAggregateReportData(summaries, {
+  includeTrivial: options.includeTrivial,
+})
+const analysisSelection = selectAnalysisSessions(sessions, summaries, {
+  includeTrivial: options.includeTrivial,
+})
 
 let analysis
 if (options.analysisFile) {
@@ -49,7 +55,7 @@ if (options.analysisFile) {
   const cacheDir = resolve(extra.cacheDir ?? resolveFacetCacheDir())
   await mkdir(cacheDir, { recursive: true })
   analysis = await runFullAnalysis({
-    sessions,
+    sessions: analysisSelection.sessions,
     reportData,
     cacheDir,
     forceRefresh: extra.forceRefresh,

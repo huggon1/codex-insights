@@ -39,6 +39,7 @@ Each event emits these fields:
 - `tool_status`
 - `cwd`
 - `model_provider`
+- `token_usage`
 - `command_text`
 - `file_paths`
 - `raw_ref`
@@ -57,5 +58,6 @@ Each event emits these fields:
 
 - `raw_ref` stores `source_file`, `line_number`, and raw type references for debugging.
 - `tool_result` is linked to prior `tool_call` records by `call_id` when present.
+- `event_msg` records with payload type `token_count` are normalized as `system_event` with `text: "token_count"` and `token_usage` populated from `info.total_token_usage` when present.
 - `warnings` are part of the contract and should be preserved by downstream stages.
-- This schema is intentionally minimal for PR1 and should only grow when later stages require additional deterministic fields.
+- This schema is intentionally minimal and should only grow when later stages require additional deterministic fields.

@@ -19,6 +19,15 @@ test("normalizeSessionRecords produces stable normalized events", async () => {
   assert.equal(normalized.events[5].event_type, "tool_result")
   assert.equal(normalized.events[5].tool_status, "success")
   assert.equal(normalized.events[6].event_type, "assistant_message")
+  assert.equal(normalized.events[7].event_type, "system_event")
+  assert.equal(normalized.events[7].text, "token_count")
+  assert.deepEqual(normalized.events[7].token_usage, {
+    input_tokens: 100,
+    cached_input_tokens: 40,
+    output_tokens: 20,
+    reasoning_output_tokens: 5,
+    total_tokens: 120,
+  })
   assert.deepEqual(normalized.warnings, [])
 })
 
