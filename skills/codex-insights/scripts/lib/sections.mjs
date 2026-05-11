@@ -295,15 +295,23 @@ async function runSection({ client, name, prompt }) {
   }
 }
 
-export async function generateNarrativeSections({ client, reportData, facets }) {
+export async function generateNarrativeSections({ client, reportData, facets, progress }) {
   const context = buildNarrativeContext({ reportData, facets })
   const contextJson = JSON.stringify(context, null, 2)
+  let completedSections = 0
+  progress?.log?.(`generating ${SECTION_NAMES.length} narrative sections`)
 
   const sectionPromises = SECTION_NAMES.map(async (name) => {
     const prompt = await loadPrompt(`sections/${name}.md`, {
       CONTEXT_JSON: contextJson,
     })
-    return runSection({ client, name, prompt })
+    const result = await runSection({ client, name, prompt })
+    completedSections += 1
+    progress?.log?.(
+      `generating sections ${completedSections}/${SECTION_NAMES.length} ` +
+        `${name} ${result.status === "ok" ? "done" : "error"}`,
+    )
+    return result
   })
 
   const sectionResults = await Promise.all(sectionPromises)
@@ -326,11 +334,15 @@ export async function generateNarrativeSections({ client, reportData, facets }) 
     SYNTHESIS_INPUT_JSON: JSON.stringify(synthesisInput, null, 2),
   })
 
+  progress?.log?.("synthesizing at_a_glance")
   sections.at_a_glance = await runSection({
     client,
     name: "at_a_glance",
     prompt: synthesisPrompt,
   })
+  progress?.log?.(
+    `synthesizing at_a_glance ${sections.at_a_glance.status === "ok" ? "done" : "error"}`,
+  )
 
   return { sections, context }
 }

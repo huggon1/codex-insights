@@ -157,9 +157,12 @@ export async function extractFacetsForSessions({
   forceRefresh = false,
   reasoningEffort,
   concurrency = 3,
+  progress,
 }) {
   const results = new Array(sessions.length)
   let cursor = 0
+  let completed = 0
+  progress?.log?.(`extracting facets for ${sessions.length} sessions`)
 
   async function worker() {
     while (true) {
@@ -168,17 +171,24 @@ export async function extractFacetsForSessions({
       if (index >= sessions.length) {
         return
       }
-      results[index] = await extractFacetsForSession({
+      const result = await extractFacetsForSession({
         session: sessions[index],
         client,
         cacheDir,
         forceRefresh,
         reasoningEffort,
       })
+      results[index] = result
+      completed += 1
+      progress?.log?.(
+        `extracting facets ${completed}/${sessions.length} ` +
+          `session=${sessions[index].session_id} cache=${result.cached ? "hit" : "miss"}`,
+      )
     }
   }
 
   const workerCount = Math.max(1, Math.min(concurrency, sessions.length))
   await Promise.all(Array.from({ length: workerCount }, () => worker()))
+  progress?.done?.("extracting facets")
   return results
 }

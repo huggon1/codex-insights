@@ -14,6 +14,8 @@ import {
 import { buildAggregateReportData } from "../skills/codex-insights/scripts/lib/aggregate.mjs"
 import { buildReportFacts } from "../skills/codex-insights/scripts/lib/report-facts.mjs"
 import { renderMarkdownReport } from "../skills/codex-insights/scripts/lib/markdown-report.mjs"
+import { renderHtmlReport } from "../skills/codex-insights/scripts/lib/html-report.mjs"
+import { parseCliArgs } from "../skills/codex-insights/scripts/lib/cli.mjs"
 
 const execFileAsync = promisify(execFile)
 const REPO_ROOT = "/home/duu/code/codex-insights"
@@ -186,6 +188,14 @@ test("aggregate report data and report facts stay stable for fixture input", asy
   assert.equal(reportFacts.cwd_distribution[0].name, "/workspace/another-project")
 })
 
+test("parseCliArgs supports format and quiet options", () => {
+  const options = parseCliArgs(["--format", "html", "--quiet", "--include-trivial"])
+
+  assert.equal(options.format, "html")
+  assert.equal(options.quiet, true)
+  assert.equal(options.includeTrivial, true)
+})
+
 test("renderMarkdownReport emits all narrative sections and stats", async () => {
   const summaries = await loadFixtureSummaries()
   const reportData = buildAggregateReportData(summaries, {
@@ -207,6 +217,84 @@ test("renderMarkdownReport emits all narrative sections and stats", async () => 
   assert.match(markdown, /^### Session Quality Signals$/m)
   assert.match(markdown, /Repository inspection/)
   assert.match(markdown, /Inspect-then-summarize/)
+})
+
+test("renderHtmlReport emits self-contained insights sections and stats", async () => {
+  const summaries = await loadFixtureSummaries()
+  const reportData = buildAggregateReportData(summaries, {
+    generatedAt: "2026-05-14T00:00:00.000Z",
+  })
+  const html = renderHtmlReport({ reportData, analysis: buildFakeAnalysis() })
+
+  assert.match(html, /^<!DOCTYPE html>/)
+  assert.match(html, /<title>Codex Insights Report<\/title>/)
+  assert.match(html, /<h2>At a Glance<\/h2>/)
+  assert.match(html, /<h2>Project Areas<\/h2>/)
+  assert.match(html, /<h2>What Works<\/h2>/)
+  assert.match(html, /<h2>Friction Analysis<\/h2>/)
+  assert.match(html, /<h2>Interaction Style<\/h2>/)
+  assert.match(html, /<h2>Suggestions<\/h2>/)
+  assert.match(html, /<h2>On The Horizon<\/h2>/)
+  assert.match(html, /id="fun-ending"/)
+  assert.match(html, /The logs are learning to talk/)
+  assert.match(html, /<h2>Stats<\/h2>/)
+  assert.match(html, /<h2>Session Snapshots<\/h2>/)
+  assert.match(html, /Repository inspection/)
+  assert.match(html, /Paste into Codex/)
+  assert.match(html, /session-fixture-4/)
+  assert.doesNotMatch(html, /<link\b/)
+  assert.doesNotMatch(html, /https:\/\/fonts/)
+})
+
+test("renderHtmlReport escapes dynamic report content", () => {
+  const reportData = buildAggregateReportData([], {
+    generatedAt: "2026-05-14T00:00:00.000Z",
+  })
+  const html = renderHtmlReport({
+    reportData,
+    analysis: {
+      sections: {
+        at_a_glance: {
+          status: "ok",
+          data: {
+            whats_working: "<script>alert(1)</script> & \"quoted\"",
+            whats_hindering: "safe",
+            quick_wins: "safe",
+            ambitious_workflows: "safe",
+          },
+        },
+        project_areas: { status: "ok", data: { areas: [] } },
+        what_works: { status: "ok", data: { intro: "ok", impressive_workflows: [] } },
+        friction_analysis: { status: "ok", data: { intro: "ok", categories: [] } },
+        interaction_style: { status: "ok", data: { narrative: "n", key_pattern: "k" } },
+        suggestions: {
+          status: "ok",
+          data: { agents_md_additions: [], features_to_try: [], usage_patterns: [] },
+        },
+        on_the_horizon: {
+          status: "ok",
+          data: {
+            intro: "ok",
+            opportunities: [
+              {
+                title: "Unsafe prompt",
+                whats_possible: "ok",
+                how_to_try: "ok",
+                copyable_prompt: "<img src=x onerror=alert(1)>",
+              },
+            ],
+          },
+        },
+        fun_ending: { status: "ok", data: { headline: "h", detail: "d" } },
+      },
+      cache_stats: { hits: 0, llm_calls: 0 },
+    },
+  })
+
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; &quot;quoted&quot;/)
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/)
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/)
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/)
 })
 
 test("renderMarkdownReport surfaces section-level errors in a notes block", () => {
@@ -245,7 +333,7 @@ test("build-report script renders markdown end to end with an analysis file", as
 
   await writeFile(analysisFile, JSON.stringify(buildFakeAnalysis(), null, 2), "utf8")
 
-  const { stdout } = await execFileAsync(
+  const { stdout, stderr } = await execFileAsync(
     "node",
     [
       "skills/codex-insights/scripts/build-report.mjs",
@@ -260,10 +348,78 @@ test("build-report script renders markdown end to end with an analysis file", as
   )
 
   assert.equal(stdout, "")
+  assert.match(stderr, /\[codex-insights\] loaded 4 sessions/)
+  assert.match(stderr, /\[codex-insights\] selected 3 sessions for narrative analysis; filtered 1 trivial sessions/)
+  assert.match(stderr, /\[codex-insights\] loading analysis from /)
+  assert.match(stderr, /\[codex-insights\] rendering markdown report/)
+  assert.match(stderr, /\[codex-insights\] wrote markdown report to /)
   const report = await readFile(outputFile, "utf8")
   assert.match(report, /^## At a Glance$/m)
   assert.match(report, /^## Suggestions$/m)
   assert.match(report, /Repository inspection/)
   assert.match(report, /Trivial sessions filtered from narrative analysis: 1/)
   assert.match(report, /session-fixture-4/)
+})
+
+test("build-report script renders html end to end with an analysis file", async () => {
+  const { root } = await createFixtureSessions()
+  const tempDir = await mkdtemp(join(tmpdir(), "codex-insights-report-html-test-"))
+  const analysisFile = join(tempDir, "analysis.json")
+  const outputFile = join(tempDir, "report.html")
+
+  await writeFile(analysisFile, JSON.stringify(buildFakeAnalysis(), null, 2), "utf8")
+
+  const { stdout, stderr } = await execFileAsync(
+    "node",
+    [
+      "skills/codex-insights/scripts/build-report.mjs",
+      "--root",
+      root,
+      "--analysis-file",
+      analysisFile,
+      "--format",
+      "html",
+      "--output-file",
+      outputFile,
+    ],
+    { cwd: REPO_ROOT },
+  )
+
+  assert.equal(stdout, "")
+  assert.match(stderr, /\[codex-insights\] rendering html report/)
+  assert.match(stderr, /\[codex-insights\] wrote html report to /)
+  const report = await readFile(outputFile, "utf8")
+  assert.match(report, /^<!DOCTYPE html>/)
+  assert.match(report, /<h2>At a Glance<\/h2>/)
+  assert.match(report, /<h2>Suggestions<\/h2>/)
+  assert.match(report, /Repository inspection/)
+  assert.match(report, /Trivial sessions filtered from narrative analysis: 1/)
+  assert.match(report, /session-fixture-4/)
+})
+
+test("build-report script suppresses progress output with quiet", async () => {
+  const { root } = await createFixtureSessions()
+  const tempDir = await mkdtemp(join(tmpdir(), "codex-insights-report-quiet-test-"))
+  const analysisFile = join(tempDir, "analysis.json")
+  const outputFile = join(tempDir, "report.md")
+
+  await writeFile(analysisFile, JSON.stringify(buildFakeAnalysis(), null, 2), "utf8")
+
+  const { stdout, stderr } = await execFileAsync(
+    "node",
+    [
+      "skills/codex-insights/scripts/build-report.mjs",
+      "--root",
+      root,
+      "--analysis-file",
+      analysisFile,
+      "--output-file",
+      outputFile,
+      "--quiet",
+    ],
+    { cwd: REPO_ROOT },
+  )
+
+  assert.equal(stdout, "")
+  assert.equal(stderr, "")
 })

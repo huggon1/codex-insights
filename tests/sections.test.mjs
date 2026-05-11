@@ -68,6 +68,7 @@ test("buildNarrativeContext rolls up facet aggregations", () => {
 
 test("generateNarrativeSections runs parallel sections plus at_a_glance", async () => {
   const calls = []
+  const progressMessages = []
   const fakeClient = {
     async runStructured(prompt, schema) {
       const sectionName =
@@ -116,6 +117,11 @@ test("generateNarrativeSections runs parallel sections plus at_a_glance", async 
     client: fakeClient,
     reportData: buildReportData(),
     facets: buildFacets(),
+    progress: {
+      log(message) {
+        progressMessages.push(message)
+      },
+    },
   })
 
   assert.equal(Object.keys(sections).length, SECTION_NAMES.length + 1)
@@ -129,6 +135,15 @@ test("generateNarrativeSections runs parallel sections plus at_a_glance", async 
   // The parallel sections should have been called before at_a_glance.
   const lastCall = calls.at(-1)
   assert.equal(lastCall, "at_a_glance")
+  assert.equal(progressMessages[0], "generating 7 narrative sections")
+  for (const name of SECTION_NAMES) {
+    assert.ok(
+      progressMessages.some((message) => message.includes(`${name} done`)),
+      `progress should include ${name}`,
+    )
+  }
+  assert.ok(progressMessages.includes("synthesizing at_a_glance"))
+  assert.ok(progressMessages.includes("synthesizing at_a_glance done"))
 })
 
 test("generateNarrativeSections records section-level errors without aborting", async () => {

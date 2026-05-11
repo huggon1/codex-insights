@@ -8,6 +8,7 @@ import { buildSessionSummaries } from "./lib/summaries.mjs"
 import { selectAnalysisSessions } from "./lib/session-quality.mjs"
 import { extractFacetsForSessions } from "./lib/facet-extraction.mjs"
 import { resolveFacetCacheDir } from "./lib/cache-paths.mjs"
+import { createProgressLogger } from "./lib/progress.mjs"
 
 function parseExtraArgs(argv) {
   const extras = { forceRefresh: false, cacheDir: null, model: null }
@@ -34,18 +35,25 @@ function parseExtraArgs(argv) {
 
 const baseOptions = parseCliArgs(process.argv.slice(2))
 const extra = parseExtraArgs(process.argv.slice(2))
+const progress = createProgressLogger({ enabled: !baseOptions.quiet })
 
 const sessions = await loadNormalizedSessions({
   root: baseOptions.root ?? undefined,
   limit: baseOptions.limit ?? undefined,
 })
+progress.log(`loaded ${sessions.length} sessions`)
 const summaries = buildSessionSummaries(sessions)
 const analysisSelection = selectAnalysisSessions(sessions, summaries, {
   includeTrivial: baseOptions.includeTrivial,
 })
+progress.log(
+  `selected ${analysisSelection.analysis_session_count} sessions for facet extraction; ` +
+    `filtered ${analysisSelection.filtered_session_count} trivial sessions`,
+)
 
 const cacheDir = resolve(extra.cacheDir ?? resolveFacetCacheDir())
 await mkdir(cacheDir, { recursive: true })
+progress.log(`using facet cache ${cacheDir}`)
 
 const client = createCodexClient({
   ...(extra.model ? { model: extra.model } : {}),
@@ -56,6 +64,7 @@ const results = await extractFacetsForSessions({
   client,
   cacheDir,
   forceRefresh: extra.forceRefresh,
+  progress,
 })
 
 const summary = {
